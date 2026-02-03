@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Optional, List, Any
 
 
@@ -20,17 +20,19 @@ class UserOut(BaseModel):
     email: str
     role: str
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
 
 
 class UnitOut(BaseModel):
     id: int
-    unit_type: Optional[str] = None
-    status: Optional[str] = None
-    build_year: Optional[int] = None
-    geo_location: Optional[Any] = None
+    unit_type: Optional[str]
+    status: Optional[str]
+    build_year: Optional[int]
+    geo_location: Optional[Any]
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
 
 
 class InventoryItemIn(BaseModel):
@@ -44,4 +46,5 @@ class InventoryItemIn(BaseModel):
 class InventoryItemOut(InventoryItemIn):
     id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
