@@ -17,6 +17,7 @@ COPY . /app
 
 ENV PYTHONUNBUFFERED=1
 ENV FRONTEND_ORIGIN=https://ahp-dashboards.vercel.app
+ENV PYTHONPATH=/app/backend
 
 EXPOSE 8000
 
