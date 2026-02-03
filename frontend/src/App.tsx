@@ -8,6 +8,7 @@ import About from "./pages/About"
 
 export default function App() {
   const [dark, setDark] = React.useState<boolean>(() => typeof window !== 'undefined' && (localStorage.getItem('theme') === 'dark'))
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
   // Enforce HTTPS in production
   React.useEffect(() => {
@@ -39,6 +40,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* Desktop Navigation */}
             <nav className="space-x-2 hidden sm:block">
               <Link className="inline-flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700" to="/analysis">
                 <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M7 13l3-3 3 6 4-8"/></svg>
@@ -58,6 +60,21 @@ export default function App() {
               </Link>
             </nav>
 
+            {/* Mobile Menu Button */}
+            <button
+              aria-label="Toggle mobile menu"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="sm:hidden flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+
             <button aria-label="Toggle theme" onClick={() => setDark((d: boolean) => !d)} className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-700">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 3v1M12 20v1M4.2 4.2l.7.7M18.1 18.1l.7.7M1 12h1M22 12h1M4.2 19.8l.7-.7M18.1 5.9l.7-.7M12 5a7 7 0 100 14 7 7 0 000-14z"/></svg>
               <div className="w-10 h-6 relative">
@@ -67,7 +84,46 @@ export default function App() {
             </button>
           </div>
         </div>
-      </header>
+
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && (
+          <nav className="sm:hidden bg-gray-50 dark:bg-gray-700 border-t">
+            <div className="app-container flex flex-col space-y-2 py-4">
+              <Link
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-sky-600"
+                to="/analysis"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M7 13l3-3 3 6 4-8"/></svg>
+                <span>Analysis</span>
+              </Link>
+              <Link
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-sky-600"
+                to="/gis"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0 0v9"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 2C8 2 4 5 4 9c0 6 8 13 8 13s8-7 8-13c0-4-4-7-8-7z"/></svg>
+                <span>GIS</span>
+              </Link>
+              <Link
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-sky-600"
+                to="/inventory"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h18"/></svg>
+                <span>Inventory</span>
+              </Link>
+              <Link
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-sky-600"
+                to="/about"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>About</span>
+              </Link>
+            </div>
+          </nav>
+        )}
 
       <main className="app-container py-8">
         <Routes>
