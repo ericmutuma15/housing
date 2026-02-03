@@ -124,6 +124,7 @@ export default function App() {
             </div>
           </nav>
         )}
+      </header>
 
       <main className="app-container py-8">
         <Routes>
