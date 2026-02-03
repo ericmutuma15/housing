@@ -1,3 +1,25 @@
+import sys
+
+# Python 3.13 compatibility patch for Pydantic 1.10.12
+# Pydantic 1.10.12 uses ForwardRef._evaluate() with old signature
+# Python 3.13 changed the signature to require 'recursive_guard' parameter
+if sys.version_info >= (3, 13):
+    import typing
+    from pydantic.typing import evaluate_forwardref as old_evaluate_forwardref
+    
+    def patched_evaluate_forwardref(value, globalns, localns=None):
+        """Patched version that works with Python 3.13"""
+        try:
+            # Try the new signature first (Python 3.13+)
+            return value._evaluate(globalns, localns, set())
+        except TypeError:
+            # Fall back to old signature
+            return old_evaluate_forwardref(value, globalns, localns)
+    
+    # Monkey-patch pydantic
+    import pydantic.typing
+    pydantic.typing.evaluate_forwardref = patched_evaluate_forwardref
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
