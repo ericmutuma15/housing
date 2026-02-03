@@ -1,24 +1,25 @@
+import os
 import sys
 
-# Python 3.13 compatibility patch for Pydantic 1.10.12
-# Pydantic 1.10.12 uses ForwardRef._evaluate() with old signature
-# Python 3.13 changed the signature to require 'recursive_guard' parameter
+# Python 3.13 compatibility patch for Pydantic 1.10.12 (best-effort)
+# If running under a Python runtime where ForwardRef signatures changed,
+# this attempts a safe fallback. Prefer setting Python 3.11 on the host.
 if sys.version_info >= (3, 13):
-    import typing
-    from pydantic.typing import evaluate_forwardref as old_evaluate_forwardref
-    
-    def patched_evaluate_forwardref(value, globalns, localns=None):
-        """Patched version that works with Python 3.13"""
-        try:
-            # Try the new signature first (Python 3.13+)
-            return value._evaluate(globalns, localns, set())
-        except TypeError:
-            # Fall back to old signature
-            return old_evaluate_forwardref(value, globalns, localns)
-    
-    # Monkey-patch pydantic
-    import pydantic.typing
-    pydantic.typing.evaluate_forwardref = patched_evaluate_forwardref
+    try:
+        from pydantic.typing import evaluate_forwardref as old_evaluate_forwardref
+
+        def patched_evaluate_forwardref(value, globalns, localns=None):
+            try:
+                return value._evaluate(globalns, localns, set())
+            except TypeError:
+                return old_evaluate_forwardref(value, globalns, localns)
+
+        import pydantic.typing
+
+        pydantic.typing.evaluate_forwardref = patched_evaluate_forwardref
+    except Exception:
+        # If patching fails, we'll let the import error surface later.
+        pass
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,9 +35,19 @@ init_db()
 
 app = FastAPI(title="Housing Dashboards - Prototype")
 
+# Configure CORS: allow the deployed frontend and local dev addresses.
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://ahp-dashboards.vercel.app")
+origins = [
+    FRONTEND_ORIGIN,
+    "https://housing-iem3.onrender.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,3 +145,11 @@ def delete_inventory(item_id: int, db: Session = Depends(get_db), user=Depends(g
     if not ok:
         raise HTTPException(status_code=404, detail="Item not found")
     return {"deleted": True}
+
+
+if __name__ == "__main__":
+    # When running directly (local dev), bind to PORT env or 8000.
+    import uvicorn
+
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=port, log_level="info")
