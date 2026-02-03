@@ -4,9 +4,17 @@ import logo from "./assets/boma-logo.png"
 import Analysis from "./pages/Analysis"
 import GIS from "./pages/GIS"
 import Inventory from "./pages/Inventory"
+import About from "./pages/About"
 
 export default function App() {
   const [dark, setDark] = React.useState<boolean>(() => typeof window !== 'undefined' && (localStorage.getItem('theme') === 'dark'))
+
+  // Enforce HTTPS in production
+  React.useEffect(() => {
+    if (import.meta.env.PROD && typeof window !== 'undefined' && window.location.protocol === 'http:') {
+      window.location.protocol = 'https:'
+    }
+  }, [])
 
   React.useEffect(() => {
     const root = document.documentElement
@@ -44,6 +52,10 @@ export default function App() {
                 <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h18"/></svg>
                 <span className="text-sky-600">Inventory</span>
               </Link>
+              <Link className="inline-flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700" to="/about">
+                <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span className="text-sky-600">About</span>
+              </Link>
             </nav>
 
             <button aria-label="Toggle theme" onClick={() => setDark((d: boolean) => !d)} className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-700">
@@ -63,6 +75,7 @@ export default function App() {
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/gis" element={<GIS />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/about" element={<About />} />
         </Routes>
       </main>
     </div>

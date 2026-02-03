@@ -1,6 +1,12 @@
 import axios from "axios"
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000"
+const isProduction = import.meta.env.PROD
+const isDev = import.meta.env.DEV
+
+// Determine API base URL based on environment
+const API_BASE = isProduction 
+  ? "https://housing-iem3.onrender.com"
+  : import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000"
 
 export async function fetchKpis() {
   const r = await axios.get(`${API_BASE}/api/kpis`)
