@@ -39,7 +39,7 @@ app = FastAPI(title="Housing Dashboards - Prototype")
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://ahp-dashboards.vercel.app")
 origins = [
     FRONTEND_ORIGIN,
-    "https://housing-iem3.onrender.com",
+    "https://housing-1-yxt5.onrender.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:8000",
