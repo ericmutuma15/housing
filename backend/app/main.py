@@ -38,12 +38,12 @@ app = FastAPI(title="Housing Dashboards - Prototype")
 # Configure CORS: allow the deployed frontend and local dev addresses.
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://ahp-dashboards.vercel.app")
 origins = [
-    #FRONTEND_ORIGIN,
-    *,
-    #"https://housing-1-yxt5.onrender.com",
-    #"http://localhost:5173",
-    #"http://127.0.0.1:5173",
-    #"http://127.0.0.1:8000",
+    FRONTEND_ORIGIN,
+    "https://ahp-dashboards.vercel.app",
+    "https://housing-1-yxt5.onrender.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
 ]
 
 app.add_middleware(
