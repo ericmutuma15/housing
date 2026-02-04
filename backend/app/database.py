@@ -38,7 +38,7 @@ if DATABASE_URL.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 # Use pool_pre_ping to avoid stale connections (helpful on cloud DBs)
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True, **engine_kwargs)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args={"sslmode": "require"}, future=True, **engine_kwargs)
 
 # Log which dialect/driver SQLAlchemy ended up initializing
 try:
