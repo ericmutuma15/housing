@@ -31,7 +31,15 @@ from app.database import SessionLocal, init_db
 from app.auth import verify_password, create_access_token, get_current_user, get_password_hash
 from app.database import engine
 
-init_db()
+def init_db():
+    import app.models  # noqa: F401
+
+    # Only auto-create tables for SQLite / local dev
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+
+    Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI(title="Housing Dashboards - Prototype")
 
