@@ -1,7 +1,7 @@
 FROM python:3.13.4-slim
 
 # Set working directory
-#WORKDIR /app
+WORKDIR /
 
 # Ensure python output is unbuffered (helpful for logs)
 ENV PYTHONUNBUFFERED=1
