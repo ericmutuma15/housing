@@ -1,9 +1,7 @@
 import os
 import sys
 
-# Python 3.13 compatibility patch for Pydantic 1.10.12 (best-effort)
-# If running under a Python runtime where ForwardRef signatures changed,
-# this attempts a safe fallback. Prefer setting Python 3.11 on the host.
+# Python 3.13 compatibility patch for Pydantic 1.10.12
 if sys.version_info >= (3, 13):
     try:
         from pydantic.typing import evaluate_forwardref as old_evaluate_forwardref
@@ -15,10 +13,8 @@ if sys.version_info >= (3, 13):
                 return old_evaluate_forwardref(value, globalns, localns)
 
         import pydantic.typing
-
         pydantic.typing.evaluate_forwardref = patched_evaluate_forwardref
     except Exception:
-        # If patching fails, we'll let the import error surface later.
         pass
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -26,24 +22,34 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
+
 from app import models, schemas, crud
-from app.database import SessionLocal, init_db
-from app.auth import verify_password, create_access_token, get_current_user, get_password_hash
-from app.database import engine
+from app.database import SessionLocal, engine
+from app.auth import verify_password, create_access_token, get_current_user
+
+# ---------------------------
+# DATABASE SETUP
+# ---------------------------
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./local.db")
 
 def init_db():
+    """
+    Only auto-create tables for local dev (SQLite).
+    Do NOT run in production on Supabase/Postgres to avoid circuit breaker.
+    """
     import app.models  # noqa: F401
 
-    # Only auto-create tables for SQLite / local dev
-    if not DATABASE_URL.startswith("sqlite"):
-        return
+    if DATABASE_URL.startswith("sqlite"):
+        models.Base.metadata.create_all(bind=engine)
 
-    Base.metadata.create_all(bind=engine)
-
-
+# ---------------------------
+# FASTAPI APP
+# ---------------------------
 app = FastAPI(title="Housing Dashboards - Prototype")
 
-# Configure CORS: allow the deployed frontend and local dev addresses.
+# ---------------------------
+# CORS CONFIG
+# ---------------------------
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://ahp-dashboards.vercel.app")
 origins = [
     FRONTEND_ORIGIN,
@@ -62,7 +68,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# ---------------------------
+# DEPENDENCY: DB SESSION
+# ---------------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -70,7 +78,9 @@ def get_db():
     finally:
         db.close()
 
-
+# ---------------------------
+# AUTH ENDPOINTS
+# ---------------------------
 @app.post("/auth/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
@@ -78,7 +88,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
-
 
 @app.post("/auth/register", response_model=schemas.UserOut)
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -88,32 +97,30 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     user = crud.create_user(db, user_in)
     return user
 
-
+# ---------------------------
+# API ENDPOINTS
+# ---------------------------
 @app.get("/api/kpis")
 def kpis(db: Session = Depends(get_db)):
     total_units = db.query(models.Unit).count()
     occupied = db.query(models.Unit).filter(models.Unit.status == "occupied").count()
     return {"total_units": total_units, "occupied": occupied}
 
-
 @app.get("/api/units/time_series")
 def units_time_series(db: Session = Depends(get_db)):
     rows = db.query(models.Unit.build_year, models.Unit.beneficiaries).all()
-    # aggregate by year
     agg = {}
     for year, ben in rows:
         if year not in agg:
             agg[year] = {"benefitted": 0, "units": 0}
         agg[year]["benefitted"] += ben or 0
         agg[year]["units"] += 1
-    result = [{"year": y, **agg[y]} for y in sorted(agg.keys() if agg.keys() else [])]
+    result = [{"year": y, **agg[y]} for y in sorted(agg.keys())]
     return result
-
 
 @app.get("/api/units", response_model=List[schemas.UnitOut])
 def get_units(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.list_units(db, skip=skip, limit=limit)
-
 
 @app.get("/api/units/{unit_id}")
 def get_unit(unit_id: int, db: Session = Depends(get_db)):
@@ -122,22 +129,27 @@ def get_unit(unit_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Unit not found")
     return unit
 
-
 @app.get("/api/inventory", response_model=List[schemas.InventoryItemOut])
 def list_inventory(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.list_inventory(db, skip=skip, limit=limit)
 
-
 @app.post("/api/inventory", response_model=schemas.InventoryItemOut)
-def create_inventory(item_in: schemas.InventoryItemIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    # only inventory manager or admin allowed - simple check
+def create_inventory(
+    item_in: schemas.InventoryItemIn,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
     if user.role not in ("inventory_manager", "admin"):
         raise HTTPException(status_code=403, detail="Insufficient privileges")
     return crud.create_inventory(db, item_in)
 
-
 @app.put("/api/inventory/{item_id}")
-def update_inventory(item_id: int, item_in: schemas.InventoryItemIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def update_inventory(
+    item_id: int,
+    item_in: schemas.InventoryItemIn,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
     if user.role not in ("inventory_manager", "admin"):
         raise HTTPException(status_code=403, detail="Insufficient privileges")
     updated = crud.update_inventory(db, item_id, item_in.dict())
@@ -145,9 +157,12 @@ def update_inventory(item_id: int, item_in: schemas.InventoryItemIn, db: Session
         raise HTTPException(status_code=404, detail="Item not found")
     return updated
 
-
 @app.delete("/api/inventory/{item_id}")
-def delete_inventory(item_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def delete_inventory(
+    item_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
     if user.role not in ("inventory_manager", "admin"):
         raise HTTPException(status_code=403, detail="Insufficient privileges")
     ok = crud.delete_inventory(db, item_id)
@@ -155,10 +170,12 @@ def delete_inventory(item_id: int, db: Session = Depends(get_db), user=Depends(g
         raise HTTPException(status_code=404, detail="Item not found")
     return {"deleted": True}
 
-
+# ---------------------------
+# MAIN ENTRYPOINT (LOCAL DEV)
+# ---------------------------
 if __name__ == "__main__":
-    # When running directly (local dev), bind to PORT env or 8000.
+    # Only initialize DB for local dev / SQLite
+    init_db()
     import uvicorn
-
     port = int(os.getenv("PORT", 8000))
     uvicorn.run("backend.app.main:app", host="0.0.0.0", port=port, log_level="info")
