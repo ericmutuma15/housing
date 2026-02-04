@@ -26,4 +26,4 @@ COPY . /app
 EXPOSE 8000
 
 # Use gunicorn with one worker (uvicorn worker)
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "1", "-b", "0.0.0.0:8000", "backend.app.main:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "1", "-b", "0.0.0.0:8000", "app.main:app"]
