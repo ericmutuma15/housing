@@ -10,7 +10,7 @@ const isLocalhost = typeof window !== 'undefined' && (
 
 const API_BASE = isLocalhost
   ? import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000"
-  : "https://housing-iem3.onrender.com"
+  : "https://housing-1-yxt5.onrender.com"
 
 export async function fetchKpis() {
   const r = await axios.get(`${API_BASE}/api/kpis`)
