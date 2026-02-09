@@ -1,5 +1,9 @@
 import os
 import logging
+from dotenv import load_dotenv, find_dotenv
+
+# Load environment variables from backend/.env (if present)
+load_dotenv(find_dotenv())
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -38,17 +42,37 @@ if DATABASE_URL.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 # Use pool_pre_ping to avoid stale connections (helpful on cloud DBs)
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True, **engine_kwargs)
+def _create_and_test_engine(url, kwargs):
+    e = create_engine(url, pool_pre_ping=True, future=True, **kwargs)
+    # Perform a quick test connection to fail fast if credentials/host are invalid
+    try:
+        with e.connect() as conn:
+            pass
+    except Exception:
+        # close the engine to free any resources
+        try:
+            e.dispose()
+        except Exception:
+            pass
+        raise
+    return e
 
-# Log which dialect/driver SQLAlchemy ended up initializing
 try:
-    logger.info(
-        "SQLAlchemy engine initialized | dialect=%s | driver=%s",
-        engine.dialect.name,
-        engine.dialect.driver,
-    )
+    engine = _create_and_test_engine(DATABASE_URL, engine_kwargs)
+    try:
+        logger.info(
+            "SQLAlchemy engine initialized | dialect=%s | driver=%s",
+            engine.dialect.name,
+            engine.dialect.driver,
+        )
+    except Exception:
+        logger.exception("Could not determine SQLAlchemy dialect/driver")
 except Exception:
-    logger.exception("Could not determine SQLAlchemy dialect/driver")
+    logger.exception("Failed to connect to DATABASE_URL; falling back to local SQLite for degraded mode")
+    DATABASE_URL = "sqlite:///./housing.db"
+    engine_kwargs = {"connect_args": {"check_same_thread": False}}
+    engine = create_engine(DATABASE_URL, future=True, **engine_kwargs)
+    logger.info("SQLite fallback engine initialized")
 
 # -------------------------------------------------------------------
 # Session / Base

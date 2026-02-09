@@ -38,15 +38,21 @@ from app.auth import verify_password, create_access_token, get_current_user
 # ---------------------------
 app = FastAPI(title="Housing Dashboards - Prototype")
 
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://ahp-dashboards.vercel.app")
-origins = [
-    FRONTEND_ORIGIN,
-    "https://ahp-dashboards.vercel.app",
-    "https://housing-1-yxt5.onrender.com",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8000",
-]
+# Allow configuring multiple frontend origins via comma-separated env var
+# Example: FRONTEND_ORIGINS="https://ahp-dashboards.vercel.app,https://housing-1-yxt5.onrender.com,http://localhost:5173"
+front_origins_env = os.getenv("FRONTEND_ORIGINS")
+if front_origins_env:
+    origins = [o.strip() for o in front_origins_env.split(",") if o.strip()]
+else:
+    FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://ahp-dashboards.vercel.app")
+    origins = [
+        FRONTEND_ORIGIN,
+        "https://ahp-dashboards.vercel.app",
+        "https://housing-1-yxt5.onrender.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8000",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,11 +73,19 @@ async def global_exception_handler(request: Request, exc: Exception):
     """
     # Log the exception server-side as needed
     # (avoid leaking internal details to client)
+    # Return CORS header matching the incoming request origin when allowed.
+    origin = request.headers.get("origin")
+    acao = None
+    if origin and origin in origins:
+        acao = origin
+    else:
+        # fall back to the first configured origin (or allow all if none)
+        acao = origins[0] if origins else "*"
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
         headers={
-            "Access-Control-Allow-Origin": FRONTEND_ORIGIN,
+            "Access-Control-Allow-Origin": acao,
             "Access-Control-Allow-Credentials": "true",
         },
     )
