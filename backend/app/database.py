@@ -57,8 +57,24 @@ def _create_and_test_engine(url, kwargs):
         raise
     return e
 
-try:
-    engine = _create_and_test_engine(DATABASE_URL, engine_kwargs)
+
+def _mask_database_url(url: str) -> str:
+    # Very small masking: replace credentials between '//' and '@' with '***'
+    try:
+        if "@" in url and "//" in url:
+            start = url.find("//") + 2
+            at = url.find("@", start)
+            if at > start:
+                return url[:start] + "***" + url[at:]
+    except Exception:
+        pass
+    return "***"
+
+skip_test = os.getenv("SKIP_DB_CONNECTION_TEST", "0") == "1"
+masked = _mask_database_url(DATABASE_URL) if DATABASE_URL else "(none)"
+if skip_test:
+    logger.info("SKIP_DB_CONNECTION_TEST=1 — creating engine without test; DATABASE_URL=%s", masked)
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True, **engine_kwargs)
     try:
         logger.info(
             "SQLAlchemy engine initialized | dialect=%s | driver=%s",
@@ -67,12 +83,23 @@ try:
         )
     except Exception:
         logger.exception("Could not determine SQLAlchemy dialect/driver")
-except Exception:
-    logger.exception("Failed to connect to DATABASE_URL; falling back to local SQLite for degraded mode")
-    DATABASE_URL = "sqlite:///./housing.db"
-    engine_kwargs = {"connect_args": {"check_same_thread": False}}
-    engine = create_engine(DATABASE_URL, future=True, **engine_kwargs)
-    logger.info("SQLite fallback engine initialized")
+else:
+    try:
+        engine = _create_and_test_engine(DATABASE_URL, engine_kwargs)
+        try:
+            logger.info(
+                "SQLAlchemy engine initialized | dialect=%s | driver=%s",
+                engine.dialect.name,
+                engine.dialect.driver,
+            )
+        except Exception:
+            logger.exception("Could not determine SQLAlchemy dialect/driver")
+    except Exception:
+        logger.exception("Failed to connect to DATABASE_URL; falling back to local SQLite for degraded mode — DATABASE_URL=%s", masked)
+        DATABASE_URL = "sqlite:///./housing.db"
+        engine_kwargs = {"connect_args": {"check_same_thread": False}}
+        engine = create_engine(DATABASE_URL, future=True, **engine_kwargs)
+        logger.info("SQLite fallback engine initialized")
 
 # -------------------------------------------------------------------
 # Session / Base
